@@ -1,0 +1,2 @@
+# LinChat
+qt socket
