@@ -15,10 +15,20 @@ Client::Client(QWidget *parent)
 	udpSocket->bind(port, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint);
 	connect(udpSocket, SIGNAL(readyRead()), this, SLOT(processPendingDatagrams()));
 	
-	sendMessage(NewParticipant);
+	QList<QHostAddress> list = QNetworkInterface::allAddresses();
+	foreach(QHostAddress address, list)
+	{
+		if (address.protocol() == QAbstractSocket::IPv4Protocol){
+			IP = address.toString();
+			break;
+		}
+	}
+	Username = getUserName();
 
 	connect(ui.button_Send, SIGNAL(clicked()), this, SLOT(on_Send_clicked()));
 	connect(ui.Button_Close, SIGNAL(clicked()), this, SLOT(on_Send_clicked()));
+
+	sendMessage(NewParticipant);
 }
 
 Client::~Client()
@@ -33,16 +43,16 @@ void Client::processPendingDatagrams()
 		QByteArray datagram;
 		datagram.resize(udpSocket->pendingDatagramSize());
 		udpSocket->readDatagram(datagram.data(), datagram.size());
-		QDataStream in(&datagram, QIODevice::ReadOnly);
+		QDataStream oStream(&datagram, QIODevice::ReadOnly);
 		int messageType;
-		in >> messageType;
+		oStream >> messageType;
 		QString userName, ipAddress, message;
 		QString time = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
 		switch (messageType)
 		{
 			case Message:
 			{
-				in >> userName >> ipAddress >> message;
+				oStream >> userName >> ipAddress >> message;
 				ui.textBrowser_Display->setTextColor(Qt::blue);
 				ui.textBrowser_Display->setCurrentFont(QFont("Times New Roman", 12));
 				ui.textBrowser_Display->append("[ " + userName + " ] " + time);
@@ -51,13 +61,13 @@ void Client::processPendingDatagrams()
 			}
 			case NewParticipant:
 			{
-				in >> userName >> ipAddress;
+				oStream >> userName >> ipAddress;
 				newParticipant(userName, ipAddress);
 				break;
 			}
 			case ParticipantLeft:
 			{
-				in >> userName;
+				oStream >> userName;
 				participantLeft(userName);
 				break;
 			}
@@ -65,27 +75,23 @@ void Client::processPendingDatagrams()
 	}
 }
 
-
-//处理新用户加入
 void Client::newParticipant(QString userName, QString ipAddress)
 {
 	bool bb = ui.table_users->findItems(userName, Qt::MatchExactly).isEmpty();
 	if (bb)
 	{
-		QTableWidgetItem *user = new QTableWidgetItem(userName);
-		QTableWidgetItem *ip = new QTableWidgetItem(ipAddress);
 		ui.table_users->insertRow(0);
-		ui.table_users->setItem(0, 0, user);
-		ui.table_users->setItem(0, 1, ip);
+		ui.table_users->setItem(0, 0, new QTableWidgetItem(userName));
+		ui.table_users->setItem(0, 1, new QTableWidgetItem(ipAddress));
 		ui.textBrowser_Display->setTextColor(Qt::gray);
 		ui.textBrowser_Display->setCurrentFont(QFont("Times New Roman", 10));
 		ui.textBrowser_Display->append(tr("%1 online!").arg(userName));
 		ui.lable_users->setText(tr("online user's: %1").arg(ui.table_users->rowCount()));
-		sendMessage(NewParticipant);
+		
+		sendMessage(NewParticipant);	//如果不加这一句，那么他将看不到前面的人。
 	}
 }
 
-//处理用户离开
 void Client::participantLeft(QString userName)
 {
 	int rowNum = ui.table_users->findItems(userName, Qt::MatchExactly).first()->row();
@@ -99,10 +105,8 @@ void Client::participantLeft(QString userName)
 void Client::sendMessage(MessageType type, QString serverAddress)
 {
 	QByteArray data;
-	QDataStream out(&data, QIODevice::WriteOnly);
-	QString address = getIP();
-	out << type << getUserName();
-
+	QDataStream iStream(&data, QIODevice::WriteOnly);
+	iStream << type << Username;
 
 	switch (type)
 	{
@@ -112,7 +116,7 @@ void Client::sendMessage(MessageType type, QString serverAddress)
 		}
 		case NewParticipant:
 		{
-			out << address;
+			iStream << IP;
 			break;
 		}
 
@@ -123,7 +127,7 @@ void Client::sendMessage(MessageType type, QString serverAddress)
 				QMessageBox::warning(0, tr("Waring"), tr("message was empty!"), QMessageBox::Ok);
 				return;
 			}
-			out << address << getMessage();
+			iStream << IP << getMessage();
 			ui.textBrowser_Display->verticalScrollBar()->setValue(ui.textBrowser_Display->verticalScrollBar()->maximum());
 			break;
 		}
@@ -140,7 +144,6 @@ void Client::on_Close_clicked()
 	this->destroy();
 }
 
-
 QString Client::getIP()  //获取ip地址
 {
 	QList<QHostAddress> list = QNetworkInterface::allAddresses();
@@ -153,7 +156,7 @@ QString Client::getIP()  //获取ip地址
 }
 
 
-QString Client::getUserName()  //获取用户名
+QString Client::getUserName()
 {
 	QStringList envVariables;
 	envVariables << "USERNAME.*" << "USER.*" << "USERDOMAIN.*"

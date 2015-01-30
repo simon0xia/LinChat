@@ -34,6 +34,8 @@ private:
 
 	QUdpSocket *udpSocket;
 	qint16 port;
+
+	QString IP, Username;
 };
 
 #endif // CLIENT_H
