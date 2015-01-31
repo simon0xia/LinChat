@@ -3,6 +3,7 @@
 
 #include <QtWidgets/QtWidgets>
 #include <QtNetwork>
+#include "client.h"
 
 class Server:public QObject
 {
@@ -14,11 +15,16 @@ public:
 
 public slots:
 	void NewClient();
-	void processPendingDatagrams();
+	void RemoveClient();
+
+private:
+	void timerEvent(QTimerEvent *);
 
 private:
 	QTcpServer *server;
 	qint16 port;
+
+	QVector<Client *> clientVec;
 };
 
 #endif // SERVER_H

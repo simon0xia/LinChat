@@ -9,10 +9,10 @@ enum MessageType
 	Message = 50,
 
 
-	Ack_Heartbeat = 500,
+	Ack_Heartbeat=500,
 	Ack_Login,
 	Ack_logout,
-	Ack_message = 550,
+	Ack_message=550,
 
 
 	MaxMessage

@@ -1,17 +1,15 @@
 #include "server.h"
-
+#include "MessageDefine.h"
 
 Server::Server(QObject *parent)
 : QObject(parent)
 {
 	server = new QTcpServer(this);
-	port = 7000;
+	port = 7750;
 	
 	if (!server->listen(QHostAddress::Any, port))
 	{
-		qDebug() << tr("LinChat Server"),
-			tr("Unable to start the server: %1.")
-			.arg(server->errorString());
+		qDebug() << tr("LinChat Server"),tr("Unable to start the server: %1.").arg(server->errorString());
 		return;
 	}
 
@@ -33,6 +31,8 @@ Server::Server(QObject *parent)
 		.arg(ipAddress).arg(server->serverPort()));
 
 	connect(server, SIGNAL(newConnection()), this, SLOT(NewClient()));
+
+	startTimer(1000);
 }
 
 Server::~Server()
@@ -40,23 +40,33 @@ Server::~Server()
 
 }
 
-void Server::NewClient()
+void Server::timerEvent(QTimerEvent *t)
 {
-	QByteArray block;
-	QDataStream out(&block, QIODevice::WriteOnly);
-	out.setVersion(QDataStream::Qt_4_0);
+	Client *client;
+	for (QVector<Client *>::iterator iter = clientVec.begin(); iter != clientVec.end(); ++iter)
+	{
+		if (!(*iter)->isLive())
+		{
+			client = *iter;
+			delete client;
 
-	QTcpSocket *clientConnection = server->nextPendingConnection();
-	connect(clientConnection, SIGNAL(disconnected()),
-		clientConnection, SLOT(deleteLater()));
-	connect(clientConnection, SIGNAL(readyRead()), this, SLOT(processPendingDatagrams()));
-
+			clientVec.erase(iter);
+		}
+	}
 }
 
-void Server::processPendingDatagrams()
+void Server::NewClient()
 {
-	while (true)
-	{
+	Client *client = new Client(this, server->nextPendingConnection());
 
-	}
+//	connect(client->getSocket(), SIGNAL(disconnected()), this, SLOT(deleteLater()));
+//	connect(client->getSocket(), SIGNAL(disconnected()), this, SLOT(RemoveClient()));
+//	connect(client->getSocket(), SIGNAL(readyRead()), client, SLOT(processPendingDatagrams()));
+
+	clientVec.push_back(client);
+}
+
+void Server::RemoveClient()
+{
+	
 }

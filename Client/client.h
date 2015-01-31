@@ -19,6 +19,8 @@ private:
 	QString getMessage();
 	QString getIP();
 
+	void timerEvent(QTimerEvent *);
+
 	void sendMessage(MessageType type, QString serverAddress = "");
 	void newParticipant(QString userName, QString ipAddress);
 	void participantLeft(QString userName);
@@ -27,12 +29,12 @@ private slots:
 	void on_Send_clicked();
 	void on_Close_clicked();
 
-	void processPendingDatagrams();
+	void processConnection();
 
 private:
 	Ui::ClientClass ui;
 
-	QUdpSocket *udpSocket;
+	QTcpSocket *Socket;
 	qint16 port;
 
 	QString IP, Username;
