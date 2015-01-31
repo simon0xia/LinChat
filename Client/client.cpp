@@ -16,6 +16,7 @@ Client::Client(QWidget *parent)
 	Socket = new QTcpSocket;
 	Socket->connectToHost(addr, port);
 	connect(Socket, SIGNAL(connected()), this, SLOT(processConnection()));
+	connect(Socket, SIGNAL(readyRead()), this, SLOT(processPendingDatagrams()));
 }
 
 Client::~Client()
@@ -25,6 +26,13 @@ Client::~Client()
 
 void Client::processConnection()
 {
+	qint32 id = qrand() % 10;
+	QString password = "123456";
+	QByteArray datagram;
+	QDataStream iStream(&datagram, QIODevice::WriteOnly);
+	iStream << Login << id << password;
+	Socket->write(datagram);
+
 	startTimer(1000);
 }
 
@@ -34,6 +42,36 @@ void Client::timerEvent(QTimerEvent *t)
 	QDataStream iStream(&datagram, QIODevice::WriteOnly);
 	iStream << Heartbeat;
 	Socket->write(datagram);
+}
+
+
+void Client::processPendingDatagrams()
+{
+	QByteArray datagram = Socket->readAll();
+	QDataStream oStream(&datagram, QIODevice::ReadOnly);
+
+	qint32 ID;
+	oStream >> ID;
+
+	QString strTmp;
+	qint32 n;
+	bool bLogin;
+	switch (ID)
+	{
+	case Ack_Login:
+		oStream >> bLogin;
+		if (!bLogin)
+		{
+			oStream >> n;
+			QMessageBox::information(this, tr("Login Fail"), tr("Login Fail, reason:%1").arg(n));
+			exit(0);
+		}
+		break;
+
+
+	default:
+		break;
+	}
 }
 
 void Client::sendMessage(MessageType type, QString serverAddress)

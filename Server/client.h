@@ -18,12 +18,15 @@ public slots:
 	void processPendingDatagrams();
 
 private:
-	const qint16 life = 10;
 	void timerEvent(QTimerEvent *);
 
+	bool checkLogin(qint32 id, QString &password);
+
 private:
+	const qint16 life = 10;
+
 	bool isLogin;
-	qint16 UID;
+	qint32 UID;
 	qint16 heartbeat;
 	QTcpSocket *s;
 };

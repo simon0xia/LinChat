@@ -30,6 +30,7 @@ private slots:
 	void on_Close_clicked();
 
 	void processConnection();
+	void processPendingDatagrams();
 
 private:
 	Ui::ClientClass ui;

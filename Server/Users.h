@@ -10,7 +10,9 @@ struct AccountData
 	QString Password;
 };
 
-AccountData Account[] = {
+const qint16 AccountNO = 10;
+
+AccountData Account[AccountNO] = {
 	{ 1, "John", "123456", },
 	{ 2, "Michelle", "123456",},
 	{ 3, "Amy", "123456", },
