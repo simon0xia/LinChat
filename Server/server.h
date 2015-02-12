@@ -5,7 +5,7 @@
 #include <QtNetwork>
 #include "client.h"
 
-class Server:public QObject
+class Server:public QTcpServer
 {
 	Q_OBJECT
 
@@ -13,18 +13,21 @@ public:
 	Server(QObject *parent);
 	~Server();
 
-public slots:
-	void NewClient();
-	void RemoveClient();
+protected:
+	void incomingConnection(qintptr handle);
 
 private:
-	void timerEvent(QTimerEvent *);
+//	void timerEvent(QTimerEvent *);
+	
+private slots:
+	void clientDisconnected(qintptr descriptor);
+	void Socketerror(QAbstractSocket::SocketError);
 
 private:
-	QTcpServer *server;
-	qint16 port;
+	qint16 port, maxClient;
+	qint16 ClientCount;
 
-	QVector<Client *> clientVec;
+	QList<Client *> ClientList;
 };
 
 #endif // SERVER_H

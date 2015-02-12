@@ -1,36 +1,41 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
-#include <QtWidgets/QWidget>
+#include <QDialog>
 #include "ui_client.h"
-#include <QtNetwork/QtNetwork>
+#include <QtNetwork>
 #include "MessageDefine.h"
 
-class Client : public QWidget
+class Client : public QDialog
 {
 	Q_OBJECT
 
 public:
-	Client(QWidget *parent = 0);
+	Client(QTcpSocket *s);
 	~Client();
 
 private:
-	QString getUserName();
-	QString getMessage();
-	QString getIP();
+	QString get_Chat_text();
+	void SendBasicMsg(MessageType msgID);
 
 	void timerEvent(QTimerEvent *);
 
-	void sendMessage(MessageType type, QString serverAddress = "");
-	void newParticipant(QString userName, QString ipAddress);
-	void participantLeft(QString userName);
+	void msg_participant_join(QDataStream &oStream);
+	void msg_participant_left(QDataStream &oStream);
+	void msg_get_OwnInfo(QDataStream &oStream);
+	void msg_get_friend(QDataStream &oStream);
+	void msg_chat_text(QDataStream &oStream);
+	void msg_chat_voice(QDataStream &oStream);
+	void msg_chat_img(QDataStream &oStream);
+
 
 private slots:
+	void Socketerror(QAbstractSocket::SocketError);
+
 	void on_Send_clicked();
 	void on_Close_clicked();
 
-	void processConnection();
-	void processPendingDatagrams();
+	void receiveMessage();
 
 private:
 	Ui::ClientClass ui;
@@ -38,7 +43,10 @@ private:
 	QTcpSocket *Socket;
 	qint16 port;
 
-	QString IP, Username;
+	quint32 uid;
+	QString Username;
+
+	QMap<quint32, QString> map_friends;
 };
 
 #endif // CLIENT_H

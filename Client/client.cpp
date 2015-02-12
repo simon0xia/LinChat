@@ -2,132 +2,147 @@
 #include <QMessageBox>
 #include <QScrollBar>
 
-Client::Client(QWidget *parent)
-	: QWidget(parent)
+Client::Client(QTcpSocket *s)
+:Socket(s), uid(0)
 {
 	ui.setupUi(this);
 
-	ui.textEdit_Send->setFocusPolicy(Qt::StrongFocus);
-	ui.textBrowser_Display->setFocusPolicy(Qt::NoFocus);
+	connect(Socket, SIGNAL(readyRead()), this, SLOT(receiveMessage()));
 
-	port = 7750;
-	QHostAddress addr("192.168.10.119");
+	startTimer(1000);
 
-	Socket = new QTcpSocket;
-	Socket->connectToHost(addr, port);
-	connect(Socket, SIGNAL(connected()), this, SLOT(processConnection()));
-	connect(Socket, SIGNAL(readyRead()), this, SLOT(processPendingDatagrams()));
+	SendBasicMsg(CS_get_OwnInfo);
+	SendBasicMsg(CS_get_friend);
 }
 
 Client::~Client()
 {
-
+	delete Socket;
 }
 
-void Client::processConnection()
+void Client::Socketerror(QAbstractSocket::SocketError socketError)
 {
-	qint32 id = qrand() % 10;
-	QString password = "123456";
+	//	LogIns.FlashLog("Client:%d An error occurred. Code:%d\n", socketDescriptor(), socketError);
+	QMessageBox::warning(this, tr("Error"), 
+		tr("Client:%1 An error occurred. Code:%1!").arg(Socket->socketDescriptor()).arg(socketError), 
+		QMessageBox::Yes);
+}
+
+inline void Client::SendBasicMsg(MessageType msgID)
+{
 	QByteArray datagram;
 	QDataStream iStream(&datagram, QIODevice::WriteOnly);
-	iStream << Login << id << password;
+	iStream << msgID;
 	Socket->write(datagram);
-
-	startTimer(1000);
 }
 
 void Client::timerEvent(QTimerEvent *t)
 {
-	QByteArray datagram;
-	QDataStream iStream(&datagram, QIODevice::WriteOnly);
-	iStream << Heartbeat;
-	Socket->write(datagram);
+	SendBasicMsg(CS_Heartbeat);
 }
 
-
-void Client::processPendingDatagrams()
+void Client::receiveMessage()
 {
-	QByteArray datagram = Socket->readAll();
-	QDataStream oStream(&datagram, QIODevice::ReadOnly);
+	QDataStream oStream(Socket);
 
-	qint32 ID;
-	oStream >> ID;
+	quint32 msgID;
+	oStream >> msgID;
 
-	QString strTmp;
-	qint32 n;
-	bool bLogin;
-	switch (ID)
+	if (msgID >= Max_SC_MSG || msgID <= Max_CS_MSG)
 	{
-	case Ack_Login:
-		oStream >> bLogin;
-		if (!bLogin)
-		{
-			oStream >> n;
-			QMessageBox::information(this, tr("Login Fail"), tr("Login Fail, reason:%1").arg(n));
-			exit(0);
-		}
-		break;
+		QMessageBox::warning(this, tr("Warning"), tr("Illegal message ID!"), QMessageBox::Yes);
+		return;
+	}
 
-
+	switch (msgID)
+	{
+	case SC_Logout:				/*cannot receive this message*/	break;
+	case SC_participant_join:	msg_participant_join(oStream);	break;
+	case SC_participant_left:	msg_participant_left(oStream);	break;
+	case SC_get_OwnInfo:		msg_get_OwnInfo(oStream);		break;
+	case SC_get_friend:			msg_get_friend(oStream);		break;
+	case SC_Chat_text:			msg_chat_text(oStream);			break;
+	case SC_Chat_voice:			msg_chat_voice(oStream);		break;
+	case SC_Chat_img:			msg_chat_img(oStream);			break;
 	default:
 		break;
 	}
 }
 
-void Client::sendMessage(MessageType type, QString serverAddress)
-{
-
-}
-
 void Client::on_Send_clicked()
 {
-	sendMessage(Message);
+	QByteArray datagram;
+	QDataStream iStream(&datagram, QIODevice::WriteOnly);
+
+	QString str= get_Chat_text();
+	if (!str.isEmpty())
+	{
+		iStream << CS_Chat_text << str;
+		Socket->write(datagram);
+	}
+	else
+	{
+		QMessageBox::warning(this, tr("Warning"), tr("The message was empty!"), QMessageBox::Yes);
+	}
 }
 void Client::on_Close_clicked()
 {
+	SendBasicMsg(CS_Logout);
+
 	this->destroy();
 }
 
-QString Client::getIP()  //获取ip地址
-{
-	QList<QHostAddress> list = QNetworkInterface::allAddresses();
-	foreach(QHostAddress address, list)
-	{
-		if (address.protocol() == QAbstractSocket::IPv4Protocol) //我们使用IPv4地址
-			return address.toString();
-	}
-	return 0;
-}
-
-
-QString Client::getUserName()
-{
-	QStringList envVariables;
-	envVariables << "USERNAME.*" << "USER.*" << "USERDOMAIN.*"
-		<< "HOSTNAME.*" << "DOMAINNAME.*";
-	QStringList environment = QProcess::systemEnvironment();
-	foreach(QString string, envVariables)
-	{
-		int index = environment.indexOf(QRegExp(string));
-		if (index != -1)
-		{
-			QStringList stringList = environment.at(index).split('=');
-			if (stringList.size() == 2)
-			{
-				return stringList.at(1);
-				break;
-			}
-		}
-	}
-	return false;
-}
-
-
-QString Client::getMessage()  //获得要发送的信息
+QString Client::get_Chat_text()  //获得要发送的信息
 {
 	QString msg = ui.textEdit_Send->toHtml();
 
 	ui.textEdit_Send->clear();
 	ui.textEdit_Send->setFocus();
 	return msg;
+}
+
+void Client::msg_participant_join(QDataStream &oStream)
+{
+
+}
+void Client::msg_participant_left(QDataStream &oStream)
+{
+
+}
+void Client::msg_get_OwnInfo(QDataStream &oStream)
+{
+	oStream >> uid >> Username;
+}
+void Client::msg_get_friend(QDataStream &oStream)
+{
+	QString name;
+	quint32 count,id,i=0;
+	oStream >> count;
+	while (count--)
+	{
+		oStream >> id >> name;
+		map_friends.insert(id, name);
+
+		ui.table_users->insertColumn(0);
+		ui.table_users->setItem(0, 0, new QTableWidgetItem(id));
+		ui.table_users->setItem(0, 1, new QTableWidgetItem(name));
+	}
+}
+void Client::msg_chat_text(QDataStream &oStream)
+{
+	quint32 id;
+	QString strTime, strChatText,str;
+
+	oStream >> id >> strTime >> strChatText;
+	str = map_friends.find(id).value();
+	str += " " + strTime + " :" + strChatText;
+	ui.textBrowser_Display->append(str);
+}
+void Client::msg_chat_voice(QDataStream &oStream)
+{
+
+}
+void Client::msg_chat_img(QDataStream &oStream)
+{
+
 }

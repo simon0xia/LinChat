@@ -2,14 +2,13 @@
 #include "MessageDefine.h"
 
 Server::Server(QObject *parent)
-: QObject(parent)
+: QTcpServer(parent)
 {
-	server = new QTcpServer(this);
 	port = 7750;
 	
-	if (!server->listen(QHostAddress::Any, port))
+	if (!listen(QHostAddress::Any, port))
 	{
-		qDebug() << tr("LinChat Server"),tr("Unable to start the server: %1.").arg(server->errorString());
+		qDebug() << tr("LinChat Server"),tr("Unable to start the server: %1.").arg(errorString());
 		return;
 	}
 
@@ -26,13 +25,8 @@ Server::Server(QObject *parent)
 	// if we did not find one, use IPv4 localhost
 	if (ipAddress.isEmpty())
 		ipAddress = QHostAddress(QHostAddress::LocalHost).toString();
-	qDebug() << (tr("The server is running on\n\nIP: %1\nport: %2\n\n"
-		"Run the Fortune Client example now.")
-		.arg(ipAddress).arg(server->serverPort()));
-
-	connect(server, SIGNAL(newConnection()), this, SLOT(NewClient()));
-
-	startTimer(1000);
+	qDebug() << (tr("The server is running on\nIP: %1\tport: %2\n")
+		.arg(ipAddress).arg(serverPort()));
 }
 
 Server::~Server()
@@ -40,33 +34,36 @@ Server::~Server()
 
 }
 
-void Server::timerEvent(QTimerEvent *t)
-{
-	Client *client;
-	for (QVector<Client *>::iterator iter = clientVec.begin(); iter != clientVec.end(); ++iter)
-	{
-		if (!(*iter)->isLive())
-		{
-			client = *iter;
-			delete client;
 
-			clientVec.erase(iter);
+void Server::incomingConnection(qintptr handle)
+{
+	qDebug() << "i";
+	Client *client = new Client(this);
+	connect(client, SIGNAL(CloseSignal(qintptr)), this, SLOT(clientDisconnected(qintptr)));
+	connect(this, SIGNAL(error(QAbstractSocket::SocketError)),
+		this, SLOT(Socketerror(QAbstractSocket::SocketError)));
+
+	++ClientCount;
+	ClientList.append(client);
+	client->setSocketDescriptor(handle);
+}
+
+void Server::clientDisconnected(qintptr descriptor)
+{
+	--ClientCount;
+	for (int i = 0; i < ClientList.count(); i++)
+	{
+		QTcpSocket *item = ClientList.at(i);
+		if (item->socketDescriptor() == descriptor)
+		{
+			ClientList.removeAt(i);
+			return;
 		}
 	}
 }
 
-void Server::NewClient()
+void Server::Socketerror(QAbstractSocket::SocketError socketError)
 {
-	Client *client = new Client(this, server->nextPendingConnection());
-
-//	connect(client->getSocket(), SIGNAL(disconnected()), this, SLOT(deleteLater()));
-//	connect(client->getSocket(), SIGNAL(disconnected()), this, SLOT(RemoveClient()));
-//	connect(client->getSocket(), SIGNAL(readyRead()), client, SLOT(processPendingDatagrams()));
-
-	clientVec.push_back(client);
-}
-
-void Server::RemoveClient()
-{
-	
+//	LogIns.FlashLog("DMServer has an error. Code:%d\n", socketDescriptor(), socketError);
+	qDebug() << "socketError:" << socketError;
 }

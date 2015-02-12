@@ -5,7 +5,7 @@
 
 struct AccountData
 {
-	qint16 ID;
+	quint32 ID;
 	QString Name;
 	QString Password;
 };

@@ -4,23 +4,30 @@
 #include <QObject>
 #include <QtNetwork>
 
-class Client : public QObject
+class Client : public QTcpSocket
 {
 	Q_OBJECT
 
 public:
-	Client(QObject *parent, QTcpSocket *socket);
+	Client(QObject *parent);
 	~Client();
-	bool isLive(void) { return heartbeat > 0 ? true : false; }
 
-public slots:
-	QTcpSocket *getSocket(void) { return s; }
-	void processPendingDatagrams();
+signals:
+	void CloseSignal(qintptr);
+
+private slots:
+	void receiveMessage();
+	void ClientClose();
+	void Socketerror(QAbstractSocket::SocketError);
 
 private:
 	void timerEvent(QTimerEvent *);
 
-	bool checkLogin(qint32 id, QString &password);
+	void msg_login(QDataStream &oStream);
+	void msg_logout(QDataStream &oStream);
+	void msg_chat_text(QDataStream &oStream);
+	void msg_chat_voice(QDataStream &oStream);
+	void msg_chat_img(QDataStream &oStream);
 
 private:
 	const qint16 life = 10;
@@ -28,7 +35,6 @@ private:
 	bool isLogin;
 	qint32 UID;
 	qint16 heartbeat;
-	QTcpSocket *s;
 };
 
 #endif // CLIENT_H
