@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
 	sema.acquire();
 	QSharedMemory mem("ChatServerObject");
 
-	// 如果全局对象以存在则退出
+	// 如果全局对象已存在则退出
 	if (!mem.create(1))
 	{
 		qDebug() << "A server has already been running.";
@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 	sema.release();
-	Server server(NULL);
+	Server server();
 
 	return a.exec();
 }

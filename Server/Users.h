@@ -25,4 +25,16 @@ AccountData Account[AccountNO] = {
 	{ 10, "Michael", "123456"}
 };
 
+QString getName(quint32 uid)
+{
+	for (quint16 i = 0; i < AccountNO; i++)
+	{
+		if (Account[i].ID == uid)
+		{
+			return Account[i].Name;
+		}
+	}
+	return "";
+}
+
 #endif //#ifndef _USERS_H

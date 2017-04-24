@@ -25,6 +25,8 @@ private:
 
 	void msg_login(QDataStream &oStream);
 	void msg_logout(QDataStream &oStream);
+	void msg_get_OwnInfo(QDataStream &oStream);
+	void msg_get_friend(QDataStream &oStream);
 	void msg_chat_text(QDataStream &oStream);
 	void msg_chat_voice(QDataStream &oStream);
 	void msg_chat_img(QDataStream &oStream);

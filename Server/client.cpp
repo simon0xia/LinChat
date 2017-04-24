@@ -35,37 +35,39 @@ void Client::Socketerror(QAbstractSocket::SocketError socketError)
 void Client::receiveMessage()
 {
 	QDataStream oStream(this);
-
 	qint32 msgID;
-	oStream >> msgID;
-	if (!isLogin && msgID != CS_Login)
+
+	while (!oStream.atEnd())
 	{
-		return;	//未登陆时，只处理Login消息。
-	}
+		oStream >> msgID;
+		if (!isLogin && msgID != CS_Login)
+		{
+			return;	//未登陆时，只处理Login消息。
+		}
 
-	if (msgID >= Max_CS_MSG)
-	{
-		qDebug() << "Warning, Illegal message ID:" << msgID;
-		return;
-	}
+		if (msgID >= Max_CS_MSG)
+			qDebug() << "Warning, Illegal message ID:" << msgID;
 
-	QString strTmp;
-	qint32 n;
-	switch (msgID)
-	{
-	case CS_Heartbeat:
-		qDebug() <<"Client:" << UID <<" was Heartbeat.\n";
-		heartbeat = life;
-		break;
+		QString strTmp;
+		qint32 n;
+		switch (msgID)
+		{
+		case CS_Heartbeat:
+	//		qDebug() <<"Client:" << UID <<" was Heartbeat.";
+			heartbeat = life;
+			break;
 
-	case CS_Login:		msg_login(oStream);			break;
-	case CS_Logout:		msg_logout(oStream);		break;
-	case CS_Chat_text:	msg_chat_text(oStream);		break;
-	case CS_Chat_voice:	msg_chat_voice(oStream);		break;
-	case CS_Chat_img:	msg_chat_img(oStream);		break;
+		case CS_Login:		msg_login(oStream);			break;
+		case CS_Logout:		msg_logout(oStream);		break;
+		case CS_get_OwnInfo:msg_get_OwnInfo(oStream);	break;
+		case CS_get_friend:	msg_get_friend(oStream);	break;
+		case CS_Chat_text:	msg_chat_text(oStream);		break;
+		case CS_Chat_voice:	msg_chat_voice(oStream);	break;
+		case CS_Chat_img:	msg_chat_img(oStream);		break;
 
-	default:
-		break;
+		default:
+			break;
+		}
 	}
 }
 
@@ -102,7 +104,7 @@ void Client::msg_login(QDataStream &oStream)
 	}
 	write(iData);
 
-	qDebug() << __FUNCTION__ << "  " << UID << "  " << password;
+	qDebug() << __FUNCTION__ << "  UID:" << UID << "  PWD:" << password;
 }
 
 void Client::msg_logout(QDataStream &oStream)
@@ -110,9 +112,43 @@ void Client::msg_logout(QDataStream &oStream)
 	//暂不处理，不响应。
 }
 
+void Client::msg_get_OwnInfo(QDataStream &oStream)
+{
+	QByteArray iData;
+	QDataStream iStream(&iData, QIODevice::WriteOnly);
+	iStream << SC_get_OwnInfo << UID  << getName(UID);
+	write(iData);
+
+	qDebug() << __FUNCTION__ << UID << getName(UID);
+}
+
+void Client::msg_get_friend(QDataStream &oStream)
+{
+	QByteArray iData;
+	QDataStream iStream(&iData, QIODevice::WriteOnly);
+	iStream << SC_get_friend << (quint32)AccountNO;
+
+	qDebug() << __FUNCTION__;
+	for (quint16 i = 0; i < AccountNO; i++)
+	{
+		iStream << Account[i].ID << Account[i].Name;
+		qDebug() << Account[i].ID << Account[i].Name;
+	}
+	write(iData);
+}
+
 void Client::msg_chat_text(QDataStream &oStream)
 {
+	QString str;
+	oStream >> str;
 
+	QTime t = QTime::currentTime();
+	QByteArray iData;
+	QDataStream iStream(&iData, QIODevice::WriteOnly);
+	iStream << SC_Chat_text << UID << t.toString() << str;
+	write(iData);
+
+	qDebug() << __FUNCTION__ << UID << t.toString() << str;
 }
 void Client::msg_chat_voice(QDataStream &oStream)
 {

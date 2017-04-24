@@ -25,7 +25,7 @@ Server::Server(QObject *parent)
 	// if we did not find one, use IPv4 localhost
 	if (ipAddress.isEmpty())
 		ipAddress = QHostAddress(QHostAddress::LocalHost).toString();
-	qDebug() << (tr("The server is running on\nIP: %1\tport: %2\n")
+	qDebug() << (tr("The server is running on\nIP: %1\tport: %2")
 		.arg(ipAddress).arg(serverPort()));
 }
 
