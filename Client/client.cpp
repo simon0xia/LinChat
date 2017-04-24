@@ -43,33 +43,36 @@ void Client::timerEvent(QTimerEvent *t)
 
 void Client::receiveMessage()
 {
-	QDataStream oStream(Socket);
+	QByteArray data = Socket->readAll();
+	QDataStream oStream(data);
+	qint32 msgID;
 
-	quint32 msgID;
-	oStream >> msgID;
-
-	if (msgID >= Max_SC_MSG || msgID <= Max_CS_MSG)
+	while (!oStream.atEnd())
 	{
-		QMessageBox::warning(this, tr("Warning"), tr("Illegal message ID!"), QMessageBox::Yes);
-		return;
-	}
+		oStream >> msgID;
+		if (msgID >= Max_SC_MSG || msgID <= Max_CS_MSG)
+		{
+	//		QMessageBox::warning(this, tr("Warning"), tr("Illegal message ID!"), QMessageBox::Yes);
+	//		return;
+		}
 
-	switch (msgID)
-	{
-	case SC_Logout:				/*cannot receive this message*/	break;
-	case SC_participant_join:	msg_participant_join(oStream);	break;
-	case SC_participant_left:	msg_participant_left(oStream);	break;
-	case SC_get_OwnInfo:		msg_get_OwnInfo(oStream);		break;
-	case SC_get_friend:			msg_get_friend(oStream);		break;
-	case SC_Chat_text:			msg_chat_text(oStream);			break;
-	case SC_Chat_voice:			msg_chat_voice(oStream);		break;
-	case SC_Chat_img:			msg_chat_img(oStream);			break;
-	default:
-		break;
+		switch (msgID)
+		{
+		case SC_Logout:				/*cannot receive this message*/	break;
+		case SC_participant_join:	msg_participant_join(oStream);	break;
+		case SC_participant_left:	msg_participant_left(oStream);	break;
+		case SC_get_OwnInfo:		msg_get_OwnInfo(oStream);		break;
+		case SC_get_friend:			msg_get_friend(oStream);		break;
+		case SC_Chat_text:			msg_chat_text(oStream);			break;
+		case SC_Chat_voice:			msg_chat_voice(oStream);		break;
+		case SC_Chat_img:			msg_chat_img(oStream);			break;
+		default:
+			break;
+		}
 	}
 }
 
-void Client::on_Send_clicked()
+void Client::on_button_Send_clicked()
 {
 	QByteArray datagram;
 	QDataStream iStream(&datagram, QIODevice::WriteOnly);
@@ -85,7 +88,7 @@ void Client::on_Send_clicked()
 		QMessageBox::warning(this, tr("Warning"), tr("The message was empty!"), QMessageBox::Yes);
 	}
 }
-void Client::on_Close_clicked()
+void Client::on_Button_Close_clicked()
 {
 	SendBasicMsg(CS_Logout);
 
@@ -94,7 +97,8 @@ void Client::on_Close_clicked()
 
 QString Client::get_Chat_text()  //获得要发送的信息
 {
-	QString msg = ui.textEdit_Send->toHtml();
+//	QString msg = ui.textEdit_Send->toHtml();
+	QString msg = ui.textEdit_Send->toPlainText();
 
 	ui.textEdit_Send->clear();
 	ui.textEdit_Send->setFocus();
@@ -118,14 +122,15 @@ void Client::msg_get_friend(QDataStream &oStream)
 	QString name;
 	quint32 count,id,i=0;
 	oStream >> count;
+
+	ui.table_users->setRowCount(count);
 	while (count--)
 	{
 		oStream >> id >> name;
 		map_friends.insert(id, name);
 
-		ui.table_users->insertColumn(0);
-		ui.table_users->setItem(0, 0, new QTableWidgetItem(id));
-		ui.table_users->setItem(0, 1, new QTableWidgetItem(name));
+		ui.table_users->setItem(count, 0, new QTableWidgetItem(id));
+		ui.table_users->setItem(count, 1, new QTableWidgetItem(name));
 	}
 }
 void Client::msg_chat_text(QDataStream &oStream)

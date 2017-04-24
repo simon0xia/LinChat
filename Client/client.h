@@ -32,8 +32,8 @@ private:
 private slots:
 	void Socketerror(QAbstractSocket::SocketError);
 
-	void on_Send_clicked();
-	void on_Close_clicked();
+	void on_button_Send_clicked();
+	void on_Button_Close_clicked();
 
 	void receiveMessage();
 
